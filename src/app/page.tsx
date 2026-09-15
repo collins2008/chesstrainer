@@ -15,7 +15,10 @@ export default function Home() {
     setSyncing(true);
     setError("");
     try {
-      const res = await fetch(`${apiUrl}/sync/${platform}/${username}`, { method: "POST" });
+      const res = await fetch(`${apiUrl}/sync/${platform}/${username}`, { 
+        method: "POST",
+        headers: { "Bypass-Tunnel-Reminder": "true" }
+      });
       const data = await res.json();
       if (data.status === "error") {
         setError(data.message);
@@ -33,7 +36,9 @@ export default function Home() {
     setError("");
     setReport(null);
     try {
-      const res = await fetch(`${apiUrl}/report/${username}`);
+      const res = await fetch(`${apiUrl}/report/${username}`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" }
+      });
       const data = await res.json();
       if (data.status === "error") {
         setError(data.message);
