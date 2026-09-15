@@ -79,6 +79,7 @@ export default function Home() {
               onChange={(e) => setPlatform(e.target.value)}
               className="border p-2 rounded bg-white dark:bg-black dark:text-white"
             >
+              <option value="all">Both Platforms</option>
               <option value="chess.com">Chess.com</option>
               <option value="lichess">Lichess</option>
             </select>
