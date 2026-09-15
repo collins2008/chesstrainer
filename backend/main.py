@@ -49,9 +49,8 @@ def sync_games(platform: str, username: str, background_tasks: BackgroundTasks, 
             db_session = SessionLocal()
             try:
                 games = db_session.query(Game).filter((Game.white.ilike(username)) | (Game.black.ilike(username))).all()
-                analyzed_ids = {m[0] for m in db_session.query(Move.game_id).distinct().all()}
                 for g in games:
-                    if g.game_id not in analyzed_ids:
+                    if g.ply_count is None:
                         run_analysis(g.game_id)
             finally:
                 db_session.close()
@@ -68,10 +67,11 @@ from database import Game, Move
 def get_status(username: str, db: Session = Depends(get_db)):
     total_games = db.query(Game).filter((Game.white.ilike(username)) | (Game.black.ilike(username))).count()
     
-    # Count how many distinct games have at least one move analyzed
-    analyzed_games = db.query(Move.game_id).join(Game, Move.game_id == Game.game_id).filter(
-        (Game.white.ilike(username)) | (Game.black.ilike(username))
-    ).distinct().count()
+    # Count how many games have been fully processed by the engine
+    analyzed_games = db.query(Game).filter(
+        ((Game.white.ilike(username)) | (Game.black.ilike(username))) & 
+        (Game.ply_count.isnot(None))
+    ).count()
     
     return {
         "total_games": total_games,
