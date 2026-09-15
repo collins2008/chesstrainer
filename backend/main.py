@@ -30,11 +30,17 @@ import ingest
 @app.post("/sync/{platform}/{username}")
 def sync_games(platform: str, username: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     success = False
-    if platform == "chess.com":
-        success = ingest.ingest_chesscom(username)
-    elif platform == "lichess":
-        success = ingest.ingest_lichess(username)
-        
+    messages = []
+    
+    if platform in ["chess.com", "all"]:
+        if ingest.ingest_chesscom(username):
+            messages.append("Chess.com")
+            success = True
+    if platform in ["lichess", "all"]:
+        if ingest.ingest_lichess(username):
+            messages.append("Lichess")
+            success = True
+            
     if success:
         # Trigger analysis on all unanalyzed games for this user
         from engine import run_analysis
@@ -43,9 +49,10 @@ def sync_games(platform: str, username: str, background_tasks: BackgroundTasks, 
         for g in games:
             background_tasks.add_task(run_analysis, g.game_id)
             
-        return {"status": "success", "message": f"Successfully synced {platform} games. Engine analysis running in background."}
+        platforms_synced = " & ".join(messages)
+        return {"status": "success", "message": f"Successfully synced {platforms_synced} games. Engine analysis running in background."}
     else:
-        return {"status": "error", "message": f"Failed to sync {platform} games."}
+        return {"status": "error", "message": f"Failed to sync games."}
 
 import utils
 

@@ -14,8 +14,8 @@ def ingest_chesscom(username: str):
         
     archives = res.json().get("archives", [])
     
-    # Just fetch the last 2 months to be fast for now
-    for month_url in archives[-2:]:
+    # Fetch ALL games from all time
+    for month_url in archives:
         games_res = requests.get(month_url, headers=headers)
         if games_res.status_code == 200:
             games_data = games_res.json().get("games", [])
@@ -71,10 +71,12 @@ def ingest_lichess(username: str, token: str = None):
         "clocks": "true",
         "evals": "true",
         "opening": "true",
-        "pgnInJson": "false",
-        "max": 50 # Limit for now to avoid massive downloads
+        "pgnInJson": "false"
     }
-    headers = {"Accept": "application/x-chess-pgn"}
+    headers = {
+        "Accept": "application/x-chess-pgn",
+        "User-Agent": "AI_Chess_Coach/1.0 (personal use)"
+    }
     if token:
         headers["Authorization"] = f"Bearer {token}"
         
