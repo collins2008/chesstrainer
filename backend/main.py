@@ -79,6 +79,30 @@ def get_status(username: str, db: Session = Depends(get_db)):
         "is_analyzing": analyzed_games < total_games and total_games > 0
     }
 
+@app.get("/drills/blunders/{username}")
+def get_blunders(username: str, db: Session = Depends(get_db)):
+    # Fetch 10 random blunders made by the user
+    from sqlalchemy.sql.expression import func
+    blunders = db.query(Move, Game).join(Game, Move.game_id == Game.game_id).filter(
+        ((Game.white.ilike(username)) & (Move.ply % 2 != 0)) | # White's turn (odd ply)
+        ((Game.black.ilike(username)) & (Move.ply % 2 == 0)),  # Black's turn (even ply)
+        Move.classification == "blunder"
+    ).order_by(func.random()).limit(10).all()
+    
+    results = []
+    for move, game in blunders:
+        results.append({
+            "game_id": game.game_id,
+            "platform": game.platform,
+            "date": game.date,
+            "ply": move.ply,
+            "move_san": move.move_san,
+            "mistake_type": move.mistake_type,
+            "centipawn_loss": move.centipawn_loss,
+            "raw_pgn": game.raw_pgn
+        })
+    return {"status": "success", "blunders": results}
+
 import utils
 
 @app.get("/report/{username}")

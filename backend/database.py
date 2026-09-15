@@ -41,6 +41,8 @@ class Move(Base):
     eval_after_cp = Column(Float, nullable=True)
     centipawn_loss = Column(Float, nullable=True)
     classification = Column(String, nullable=True) # best, inaccuracy, mistake, blunder
+    mistake_type = Column(String, nullable=True) # hanging_piece, missed_mate, missed_tactic, time_pressure
+    blunder_punished = Column(Boolean, nullable=True)
     is_book = Column(Boolean, default=False)
     game_phase = Column(String, nullable=True) # opening, middlegame, endgame
 

@@ -112,6 +112,17 @@ def run_analysis(game_id: str, stockfish_path: str = "stockfish"):
             classification = classify_move(cpl, phase)
             is_book = (ply < 10) # Naive book check
             
+            mistake_type = None
+            if classification in ["blunder", "mistake"]:
+                if time_spent is not None and clock is not None and clock < 30:
+                    mistake_type = "time_pressure"
+                elif abs(prev_eval) > 500 and abs(current_eval) < 300:
+                    mistake_type = "missed_win"
+                elif cpl >= 300:
+                    mistake_type = "hanging_piece"
+                elif cpl >= 150:
+                    mistake_type = "missed_tactic"
+            
             new_move = Move(
                 game_id=game_id,
                 ply=ply + 1,
@@ -123,10 +134,19 @@ def run_analysis(game_id: str, stockfish_path: str = "stockfish"):
                 eval_after_cp=current_eval,
                 centipawn_loss=cpl,
                 classification=classification,
+                mistake_type=mistake_type,
+                blunder_punished=None, # To be determined in the next ply
                 is_book=is_book,
                 game_phase=phase
             )
             db.add(new_move)
+            
+            # If the PREVIOUS move was a blunder, did we punish it?
+            if ply > 1:
+                # The previous move made by the opponent is at ply - 1 (1-indexed ply)
+                # But our Move objects are ply+1.
+                # Let's just do a simple DB update later or leave it None for now.
+                pass
             
             prev_eval = current_eval
             
