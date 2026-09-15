@@ -71,6 +71,9 @@ def run_analysis(game_id: str, stockfish_path: str = "stockfish"):
             move = node.move
             ply = board.ply()
             
+            # Get SAN before pushing the move
+            move_san = board.san(move)
+            
             # Clock parsing
             clock = node.clock()
             time_spent = None
@@ -112,7 +115,7 @@ def run_analysis(game_id: str, stockfish_path: str = "stockfish"):
             new_move = Move(
                 game_id=game_id,
                 ply=ply + 1,
-                move_san=board.san(move) if not board.is_game_over() else str(move),
+                move_san=move_san,
                 move_uci=move.uci(),
                 clock_seconds_remaining=clock,
                 time_spent_on_move=time_spent,
