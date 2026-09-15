@@ -1,15 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function Home() {
   const [platform, setPlatform] = useState("chess.com");
   const [username, setUsername] = useState("playerprincipal");
-  const [apiUrl, setApiUrl] = useState("http://localhost:8000");
+  const [apiUrl, setApiUrl] = useState("http://127.0.0.1:8000");
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
+  const [engineStatus, setEngineStatus] = useState<any>(null);
+
+  // Poll for engine status every 5 seconds
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (username) {
+      interval = setInterval(async () => {
+        try {
+          const res = await fetch(`${apiUrl}/status/${username}`);
+          if (res.ok) {
+            const data = await res.json();
+            setEngineStatus(data);
+          }
+        } catch (e) {
+          // ignore
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [username, apiUrl]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -106,6 +126,30 @@ export default function Home() {
             </button>
           </div>
           {error && <p className="text-red-500 mt-4">{error}</p>}
+          
+          {engineStatus && engineStatus.total_games > 0 && (
+            <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                  Engine Analysis Progress
+                </span>
+                <span className="text-xs font-mono text-blue-600 dark:text-blue-400">
+                  {engineStatus.analyzed_games} / {engineStatus.total_games} games
+                </span>
+              </div>
+              <div className="w-full bg-blue-200 dark:bg-blue-950 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.max(5, (engineStatus.analyzed_games / engineStatus.total_games) * 100)}%` }}
+                ></div>
+              </div>
+              {engineStatus.is_analyzing && (
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2 animate-pulse">
+                  Stockfish is currently crunching your games in the background...
+                </p>
+              )}
+            </div>
+          )}
         </section>
 
         {report && (

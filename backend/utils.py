@@ -5,14 +5,14 @@ from database import Game, Move
 from google import genai
 
 def extract_features(db: Session, username: str):
-    games = db.query(Game).filter((Game.white == username) | (Game.black == username)).all()
+    games = db.query(Game).filter((Game.white.ilike(username)) | (Game.black.ilike(username))).all()
     
     total_games = len(games)
     wins, losses, draws = 0, 0, 0
     openings = {}
     
     for game in games:
-        is_white = game.white == username
+        is_white = game.white.lower() == username.lower()
         
         if game.result == "1-0":
             if is_white: wins += 1
@@ -41,7 +41,7 @@ def extract_features(db: Session, username: str):
     sorted_openings = sorted(openings.items(), key=lambda x: x[1]['total'], reverse=True)[:10]
     
     # Engine features (The deep dive)
-    moves = db.query(Move).join(Game, Move.game_id == Game.game_id).filter((Game.white == username) | (Game.black == username)).all()
+    moves = db.query(Move).join(Game, Move.game_id == Game.game_id).filter((Game.white.ilike(username)) | (Game.black.ilike(username))).all()
     
     cpl_by_phase = {"opening": [], "middlegame": [], "endgame": []}
     blunders = 0
@@ -52,7 +52,7 @@ def extract_features(db: Session, username: str):
         game = next((g for g in games if g.game_id == m.game_id), None)
         if not game: continue
         
-        is_white = game.white == username
+        is_white = game.white.lower() == username.lower()
         # ply is 1-indexed. White moves on odd plies, Black moves on even plies.
         user_moved = (is_white and m.ply % 2 != 0) or (not is_white and m.ply % 2 == 0)
         

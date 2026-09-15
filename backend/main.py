@@ -42,17 +42,42 @@ def sync_games(platform: str, username: str, background_tasks: BackgroundTasks, 
             success = True
             
     if success:
-        # Trigger analysis on all unanalyzed games for this user
-        from engine import run_analysis
-        from database import Game
-        games = db.query(Game).filter((Game.white == username) | (Game.black == username)).all()
-        for g in games:
-            background_tasks.add_task(run_analysis, g.game_id)
+        # Trigger analysis on all unanalyzed games sequentially in one background task
+        def run_all_analysis():
+            from engine import run_analysis
+            from database import SessionLocal, Game, Move
+            db_session = SessionLocal()
+            try:
+                games = db_session.query(Game).filter((Game.white.ilike(username)) | (Game.black.ilike(username))).all()
+                analyzed_ids = {m[0] for m in db_session.query(Move.game_id).distinct().all()}
+                for g in games:
+                    if g.game_id not in analyzed_ids:
+                        run_analysis(g.game_id)
+            finally:
+                db_session.close()
+                
+        background_tasks.add_task(run_all_analysis)
             
         platforms_synced = " & ".join(messages)
         return {"status": "success", "message": f"Successfully synced {platforms_synced} games. Engine analysis running in background."}
     else:
         return {"status": "error", "message": f"Failed to sync games."}
+
+from database import Game, Move
+@app.get("/status/{username}")
+def get_status(username: str, db: Session = Depends(get_db)):
+    total_games = db.query(Game).filter((Game.white.ilike(username)) | (Game.black.ilike(username))).count()
+    
+    # Count how many distinct games have at least one move analyzed
+    analyzed_games = db.query(Move.game_id).join(Game, Move.game_id == Game.game_id).filter(
+        (Game.white.ilike(username)) | (Game.black.ilike(username))
+    ).distinct().count()
+    
+    return {
+        "total_games": total_games,
+        "analyzed_games": analyzed_games,
+        "is_analyzing": analyzed_games < total_games and total_games > 0
+    }
 
 import utils
 

@@ -14,19 +14,27 @@ def ingest_chesscom(username: str):
         
     archives = res.json().get("archives", [])
     
-    # Fetch ALL games from all time
-    for month_url in archives:
+    # Pre-fetch existing game IDs to avoid N+1 queries
+    existing_games = {g[0] for g in db.query(Game.game_id).filter(Game.platform == "chess.com").all()}
+    
+    # Fetch games from newest month to oldest
+    for month_url in reversed(archives):
         games_res = requests.get(month_url, headers=headers)
         if games_res.status_code == 200:
             games_data = games_res.json().get("games", [])
+            if not games_data:
+                continue
+                
+            new_games_found = False
             for game_data in games_data:
                 game_id = game_data.get("url")
                 if not game_id: continue
                 
                 # Check if exists
-                if db.query(Game).filter(Game.game_id == game_id).first():
+                if game_id in existing_games:
                     continue
                     
+                new_games_found = True
                 white = game_data.get("white", {}).get("username")
                 black = game_data.get("black", {}).get("username")
                 
@@ -58,6 +66,11 @@ def ingest_chesscom(username: str):
                 )
                 db.add(new_game)
                 
+            # If we looked at a month that had games, but NONE of them were new,
+            # it means we've reached the point in history where everything is already synced!
+            if not new_games_found:
+                break
+                
     db.commit()
     db.close()
     return True
@@ -81,52 +94,58 @@ def ingest_lichess(username: str, token: str = None):
         headers["Authorization"] = f"Bearer {token}"
         
     try:
-        res = requests.get(url, params=params, headers=headers)
-        if res.status_code != 200:
-            print(f"Lichess API error: {res.status_code}")
-            return False
-            
-        import chess.pgn
-        import io
-        
-        pgn_io = io.StringIO(res.text)
-        while True:
-            game = chess.pgn.read_game(pgn_io)
-            if game is None:
-                break
+        with requests.get(url, params=params, headers=headers, stream=True) as res:
+            if res.status_code != 200:
+                print(f"Lichess API error: {res.status_code}")
+                return False
                 
-            headers = game.headers
-            game_id = headers.get("Site", "")
-            if not game_id:
-                continue
+            import chess.pgn
+            import io
+            
+            existing_games = {g[0] for g in db.query(Game.game_id).filter(Game.platform == "lichess").all()}
+            
+            # Stream the response instead of loading everything into memory
+            res.raw.decode_content = True
+            pgn_io = io.TextIOWrapper(res.raw, encoding='utf-8')
+            
+            while True:
+                game = chess.pgn.read_game(pgn_io)
+                if game is None:
+                    break
+                    
+                headers = game.headers
+                game_id = headers.get("Site", "")
+                if not game_id:
+                    continue
+                    
+                # If we encounter a game we already have, we can stop!
+                # Lichess exports from newest to oldest by default.
+                if game_id in existing_games:
+                    break
+                    
+                white = headers.get("White")
+                black = headers.get("Black")
+                result = headers.get("Result")
+                opening = headers.get("Opening", "Unknown")
                 
-            # Check if exists
-            if db.query(Game).filter(Game.game_id == game_id).first():
-                continue
+                # Re-export PGN string to store
+                exporter = chess.pgn.StringExporter(headers=True, variations=True, comments=True)
+                raw_pgn = game.accept(exporter)
                 
-            white = headers.get("White")
-            black = headers.get("Black")
-            result = headers.get("Result")
-            opening = headers.get("Opening", "Unknown")
-            
-            # Re-export PGN string to store
-            exporter = chess.pgn.StringExporter(headers=True, variations=True, comments=True)
-            raw_pgn = game.accept(exporter)
-            
-            new_game = Game(
-                game_id=game_id,
-                platform="lichess",
-                date=headers.get("UTCDate"),
-                time_control=headers.get("TimeControl"),
-                white=white,
-                black=black,
-                result=result,
-                opening_name=opening,
-                raw_pgn=raw_pgn
-            )
-            db.add(new_game)
-            
-        db.commit()
+                new_game = Game(
+                    game_id=game_id,
+                    platform="lichess",
+                    date=headers.get("UTCDate"),
+                    time_control=headers.get("TimeControl"),
+                    white=white,
+                    black=black,
+                    result=result,
+                    opening_name=opening,
+                    raw_pgn=raw_pgn
+                )
+                db.add(new_game)
+                
+            db.commit()
     except Exception as e:
         print(f"Lichess ingest error: {e}")
         db.rollback()
