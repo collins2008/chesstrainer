@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+sqlalchemy
+google-genai
+python-chess
+requests
+berserk
+python-dotenv
