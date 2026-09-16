@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from database import get_db, Game, Move
+from database import SessionLocal, Game, Move
 import utils
 from google import genai
 from google.genai import types
@@ -53,6 +53,13 @@ def get_recent_blunders(db: Session, username: str, limit: int = 3):
         res.append(f"Game ID: {m.game_id}, Ply: {m.ply}, Move: {m.move_san}, WP Loss: {m.win_prob_loss}%, Mistake Type: {m.mistake_type}")
         
     return "\n".join(res)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 @router.post("/chat/{username}")
 async def chat_with_coach(username: str, req: ChatRequest, db: Session = Depends(get_db)):

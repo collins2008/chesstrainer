@@ -80,7 +80,7 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.status === "success") {
-        setReport(data.report);
+        setReport(data);
       } else {
         setError(data.message || "Failed to generate report.");
       }
