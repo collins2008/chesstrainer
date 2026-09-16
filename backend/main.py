@@ -2,6 +2,10 @@ from fastapi import FastAPI, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 import database
+import sys
+import ingest
+import engine
+import chat
 
 app = FastAPI(title="AI Chess Coach API")
 
@@ -13,6 +17,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(chat.router)
 
 def get_db():
     db = database.SessionLocal()

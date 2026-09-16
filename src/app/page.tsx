@@ -95,6 +95,9 @@ export default function Home() {
       <header className="flex flex-col gap-4 mb-10">
         <h1 className="text-4xl font-bold">AI Chess Coach</h1>
         <p className="text-gray-500">Your tournament-level assistant</p>
+        <Link href="/chat" className="mt-2 inline-flex items-center text-blue-600 hover:text-blue-800 font-medium">
+          Open Persistent Chat Coach &rarr;
+        </Link>
       </header>
 
       <main className="flex flex-col gap-8">
