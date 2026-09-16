@@ -121,22 +121,14 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mt-6">
-            <Link 
-              href="/drills/blunder-check" 
-              className="flex-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white p-6 rounded-2xl shadow-sm transition-all block"
-            >
-              <h2 className="text-xl font-bold mb-2">Blunder-Check Trainer</h2>
-              <p className="opacity-90">Drill your weakest habit: identifying opponent threats before moving.</p>
-            </Link>
-            
+          <div className="mt-6">
             <button 
               onClick={handleGenerate} 
-              disabled={loading}
-              className="flex-1 bg-neutral-200 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 p-6 rounded-2xl font-semibold shadow-sm hover:bg-neutral-300 dark:hover:bg-neutral-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-left"
+              disabled={loading || !engineStatus || engineStatus.analyzed_games === 0}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white p-6 rounded-2xl font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed text-center"
             >
-              <h2 className="text-xl font-bold mb-2">Get Coaching Report</h2>
-              <p className="opacity-90 text-sm font-normal">{loading ? "Generating..." : "Generate AI coaching report based on your games."}</p>
+              <h2 className="text-xl mb-2">{loading ? "Generating Insight Report..." : "Generate Personalized Training Plan"}</h2>
+              <p className="opacity-90 text-sm font-normal">Deep-dive diagnosis and custom study plan based on your games</p>
             </button>
           </div>
 
