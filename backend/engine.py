@@ -4,6 +4,16 @@ import io
 import os
 from database import SessionLocal, Game, Move
 
+import math
+
+def cp_to_wp(cp):
+    if cp is None: return None
+    cp = max(min(cp, 10000), -10000)
+    try:
+        return 50 + 50 * (2 / (1 + math.exp(-0.00368208 * cp)) - 1)
+    except OverflowError:
+        return 100.0 if cp > 0 else 0.0
+
 def get_game_phase(board: chess.Board):
     # Heuristic based on material. Max material (without kings/pawns) is 31 per side.
     # Total piece material > 30 -> Opening/Middlegame
@@ -123,6 +133,11 @@ def run_analysis(game_id: str, stockfish_path: str = "stockfish"):
                 elif cpl >= 150:
                     mistake_type = "missed_tactic"
             
+            # Win Probability
+            wp_before = cp_to_wp(prev_eval)
+            wp_after = cp_to_wp(current_eval)
+            wp_loss = max(0, wp_before - wp_after if is_white_move else wp_after - wp_before)
+
             new_move = Move(
                 game_id=game_id,
                 ply=ply + 1,
@@ -133,6 +148,9 @@ def run_analysis(game_id: str, stockfish_path: str = "stockfish"):
                 eval_before_cp=prev_eval,
                 eval_after_cp=current_eval,
                 centipawn_loss=cpl,
+                win_prob_before=wp_before,
+                win_prob_after=wp_after,
+                win_prob_loss=wp_loss,
                 classification=classification,
                 mistake_type=mistake_type,
                 blunder_punished=None, # To be determined in the next ply

@@ -40,6 +40,9 @@ class Move(Base):
     eval_before_cp = Column(Float, nullable=True)
     eval_after_cp = Column(Float, nullable=True)
     centipawn_loss = Column(Float, nullable=True)
+    win_prob_before = Column(Float, nullable=True)
+    win_prob_after = Column(Float, nullable=True)
+    win_prob_loss = Column(Float, nullable=True)
     classification = Column(String, nullable=True) # best, inaccuracy, mistake, blunder
     mistake_type = Column(String, nullable=True) # hanging_piece, missed_mate, missed_tactic, time_pressure
     blunder_punished = Column(Boolean, nullable=True)

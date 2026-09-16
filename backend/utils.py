@@ -123,8 +123,24 @@ def extract_features(db: Session, username: str):
     avg_cpl_middlegame = round(sum(cpl_by_phase["middlegame"])/len(cpl_by_phase["middlegame"]), 1) if cpl_by_phase["middlegame"] else 0
     avg_cpl_endgame = round(sum(cpl_by_phase["endgame"])/len(cpl_by_phase["endgame"]), 1) if cpl_by_phase["endgame"] else 0
     
-    total_user_moves = sum(len(v) for v in cpl_by_phase.values())
-    avg_total_cpl = round(sum(sum(v) for v in cpl_by_phase.values()) / total_user_moves, 1) if total_user_moves > 0 else 0
+    # Calculate Average WP Loss
+    wp_losses = [m.win_prob_loss for m in moves if getattr(m, 'win_prob_loss', None) is not None]
+    avg_wp_loss = round(sum(wp_losses)/len(wp_losses), 2) if wp_losses else 0
+    
+    # Critical Moments (Top 5 blunders by WP loss)
+    critical_moves = [m for m in moves if getattr(m, 'win_prob_loss', None) is not None]
+    critical_moves.sort(key=lambda x: x.win_prob_loss, reverse=True)
+    top_critical_moments = []
+    for m in critical_moves[:5]:
+        game = game_dict.get(m.game_id)
+        if game:
+            top_critical_moments.append({
+                "game": f"{game.white} vs {game.black} on {game.date}",
+                "ply": m.ply,
+                "san": m.move_san,
+                "wp_loss": round(m.win_prob_loss, 1),
+                "mistake_type": m.mistake_type
+            })
 
     avg_tilt_cpl = round(sum(tilt_cpl)/len(tilt_cpl), 1) if tilt_cpl else 0
     avg_baseline_cpl = round(sum(baseline_cpl)/len(baseline_cpl), 1) if baseline_cpl else 0
@@ -137,8 +153,7 @@ def extract_features(db: Session, username: str):
         "win_rate": round(wins/total_games * 100, 2) if total_games > 0 else 0,
         "top_openings": sorted_openings,
         "engine_metrics": {
-            "total_moves_analyzed": total_user_moves,
-            "average_centipawn_loss": avg_total_cpl,
+            "avg_wp_loss_per_move": avg_wp_loss,
             "cpl_opening": avg_cpl_opening,
             "cpl_middlegame": avg_cpl_middlegame,
             "cpl_endgame": avg_cpl_endgame,
@@ -150,7 +165,8 @@ def extract_features(db: Session, username: str):
             "endgame_converted": endgame_converted,
             "endgame_blown": endgame_blown,
             "avg_baseline_cpl": avg_baseline_cpl,
-            "avg_tilt_cpl": avg_tilt_cpl
+            "avg_tilt_cpl": avg_tilt_cpl,
+            "top_critical_moments": top_critical_moments
         }
     }
 
@@ -169,7 +185,7 @@ def generate_coach_report(features: dict, username: str):
     Record: {features['wins']}W - {features['losses']}L - {features['draws']}D ({features['win_rate']}%)
     
     [BEHAVIORAL & ENGINE METRICS]
-    - Overall Avg CPL: {features['engine_metrics']['average_centipawn_loss']}
+    - Average Win Probability Loss Per Move: {features['engine_metrics']['avg_wp_loss_per_move']}%
     - Phase Avg CPL: Opening={features['engine_metrics']['cpl_opening']}, Middlegame={features['engine_metrics']['cpl_middlegame']}, Endgame={features['engine_metrics']['cpl_endgame']}
     - Total Blunders: {features['engine_metrics']['blunders']}
     - Time-Pressure Blunders (<30s): {features['engine_metrics']['time_pressure_blunders']}
@@ -187,6 +203,10 @@ def generate_coach_report(features: dict, username: str):
     - Baseline Avg CPL: {features['engine_metrics']['avg_baseline_cpl']}
     - Avg CPL in games immediately following a loss: {features['engine_metrics']['avg_tilt_cpl']}
     
+    [CRITICAL DECISIVE MOMENTS]
+    The largest Win Probability shifts across all my games:
+    {json.dumps(features['engine_metrics']['top_critical_moments'], indent=2)}
+    
     [TOP OPENINGS]
     {json.dumps(features['top_openings'], indent=2)}
     
@@ -199,9 +219,10 @@ def generate_coach_report(features: dict, username: str):
     ### 2. Ranked priority list
     The 3-5 specific things to work on, ranked by estimated rating-point impact. For each, include:
     - **What the data shows:** (Cite the specific stat from above)
-    - **Why it matters:** (Why this specific gap is costing rating points)
+    - **Why it matters & Rating Impact:** (Why this specific gap is costing rating points, and an estimate of how many points fixing it would yield, e.g. "worth ~50-80 rating points")
     - **What kind of resource would fix it:** (e.g., "a rook endgame course", "a habit-tracking checklist for blunder-checking")
     - **How to know it's working:** (The specific metric that should move if I improve)
+    - **Concrete Example:** (Reference one of the CRITICAL DECISIVE MOMENTS listed above to prove your point)
 
     ### 3. Suggested weekly structure
     Provide a time-budget template for study allocation (e.g., "40% tactics pattern work, 25% endgame technique") based purely on my data.
