@@ -104,15 +104,22 @@ def get_blunders(username: str, db: Session = Depends(get_db)):
     return {"status": "success", "blunders": results}
 
 import utils
+from pydantic import BaseModel
 
-@app.get("/report/{username}")
-def generate_report(username: str, db: Session = Depends(get_db)):
+class GoalRequest(BaseModel):
+    target_rating: str = ""
+    target_date: str = ""
+    time_budget: str = ""
+    constraints: str = ""
+
+@app.post("/report/{username}")
+def generate_report(username: str, goal: GoalRequest, db: Session = Depends(get_db)):
     features = utils.extract_features(db, username)
     if features["total_games"] == 0:
         return {"status": "error", "message": f"No games found for {username}. Please sync games first."}
         
     try:
-        report_md = utils.generate_coach_report(features, username)
+        report_md = utils.generate_coach_report(features, username, goal)
         return {"status": "success", "report": report_md, "stats": features}
     except Exception as e:
         return {"status": "error", "message": str(e)}

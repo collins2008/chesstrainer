@@ -7,6 +7,10 @@ import Link from "next/link";
 export default function Home() {
   const [platform, setPlatform] = useState("chess.com");
   const [username, setUsername] = useState("playerprincipal");
+  const [targetRating, setTargetRating] = useState("");
+  const [targetDate, setTargetDate] = useState("");
+  const [timeBudget, setTimeBudget] = useState("");
+  const [constraints, setConstraints] = useState("");
   const [apiUrl, setApiUrl] = useState("http://127.0.0.1:8000");
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -54,21 +58,34 @@ export default function Home() {
   };
 
   const handleGenerate = async () => {
+    if (!username) {
+      setError("Please fetch games first.");
+      return;
+    }
     setLoading(true);
     setError("");
-    setReport(null);
     try {
       const res = await fetch(`${apiUrl}/report/${username}`, {
-        headers: { "Bypass-Tunnel-Reminder": "true" }
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Bypass-Tunnel-Reminder": "true"
+        },
+        body: JSON.stringify({
+          target_rating: targetRating,
+          target_date: targetDate,
+          time_budget: timeBudget,
+          constraints: constraints
+        })
       });
       const data = await res.json();
-      if (data.status === "error") {
-        setError(data.message);
+      if (data.status === "success") {
+        setReport(data.report);
       } else {
-        setReport(data);
+        setError(data.message || "Failed to generate report.");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to generate report");
+    } catch (e) {
+      setError("Failed to connect to backend.");
     }
     setLoading(false);
   };
@@ -121,7 +138,51 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-8 bg-neutral-100 dark:bg-neutral-900 p-6 rounded-2xl border border-neutral-200 dark:border-neutral-800">
+            <h3 className="text-xl font-bold mb-4">Set Your Coaching Goal</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Target Rating</label>
+                <input 
+                  type="text" 
+                  value={targetRating}
+                  onChange={(e) => setTargetRating(e.target.value)}
+                  placeholder="e.g. 2000"
+                  className="w-full border p-2 rounded bg-white dark:bg-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Timeline</label>
+                <input 
+                  type="text" 
+                  value={targetDate}
+                  onChange={(e) => setTargetDate(e.target.value)}
+                  placeholder="e.g. 6 months"
+                  className="w-full border p-2 rounded bg-white dark:bg-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Weekly Time Budget</label>
+                <input 
+                  type="text" 
+                  value={timeBudget}
+                  onChange={(e) => setTimeBudget(e.target.value)}
+                  placeholder="e.g. 5 hours"
+                  className="w-full border p-2 rounded bg-white dark:bg-black dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Constraints</label>
+                <input 
+                  type="text" 
+                  value={constraints}
+                  onChange={(e) => setConstraints(e.target.value)}
+                  placeholder="e.g. Weekends only"
+                  className="w-full border p-2 rounded bg-white dark:bg-black dark:text-white"
+                />
+              </div>
+            </div>
+
             <button 
               onClick={handleGenerate} 
               disabled={loading || !engineStatus || engineStatus.analyzed_games === 0}

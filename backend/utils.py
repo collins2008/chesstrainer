@@ -170,7 +170,7 @@ def extract_features(db: Session, username: str):
         }
     }
 
-def generate_coach_report(features: dict, username: str):
+def generate_coach_report(features: dict, username: str, goal):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return "GEMINI_API_KEY environment variable not set. Please set it to generate reports."
@@ -183,6 +183,12 @@ def generate_coach_report(features: dict, username: str):
     
     Username: {username}
     Record: {features['wins']}W - {features['losses']}L - {features['draws']}D ({features['win_rate']}%)
+    
+    [USER GOALS & CONSTRAINTS]
+    - Target Rating: {goal.target_rating}
+    - Timeline: {goal.target_date}
+    - Weekly Time Budget: {goal.time_budget}
+    - Constraints: {goal.constraints}
     
     [BEHAVIORAL & ENGINE METRICS]
     - Average Win Probability Loss Per Move: {features['engine_metrics']['avg_wp_loss_per_move']}%
@@ -207,31 +213,28 @@ def generate_coach_report(features: dict, username: str):
     The largest Win Probability shifts across all my games:
     {json.dumps(features['engine_metrics']['top_critical_moments'], indent=2)}
     
-    [TOP OPENINGS]
-    {json.dumps(features['top_openings'], indent=2)}
-    
     [OUTPUT INSTRUCTIONS]
-    Do NOT output generic chess advice. You MUST format your response EXACTLY using the following 5 markdown sections:
+    Do NOT output generic chess advice. You MUST format your response EXACTLY using the following markdown sections:
 
-    ### 1. Headline diagnosis
-    Provide a plain-language summary of my current identity as a player and the 2-3 things most responsible for my rating ceiling right now. Not a laundry list, a prioritized diagnosis.
+    ### 1. Feasibility Check
+    Honestly evaluate whether my Target Rating is realistic given my Timeline and Weekly Time Budget. If it is aggressive or unrealistic based on the size of the gaps in my data, say so directly and propose a more realistic timeline or checkpoint. Be blunt like a real coach.
 
-    ### 2. Ranked priority list
-    The 3-5 specific things to work on, ranked by estimated rating-point impact. For each, include:
-    - **What the data shows:** (Cite the specific stat from above)
-    - **Why it matters & Rating Impact:** (Why this specific gap is costing rating points, and an estimate of how many points fixing it would yield, e.g. "worth ~50-80 rating points")
-    - **What kind of resource would fix it:** (e.g., "a rook endgame course", "a habit-tracking checklist for blunder-checking")
-    - **How to know it's working:** (The specific metric that should move if I improve)
-    - **Concrete Example:** (Reference one of the CRITICAL DECISIVE MOMENTS listed above to prove your point)
+    ### 2. Milestone Breakdown
+    Break the total gap into intermediate checkpoints (e.g., every 4-6 weeks) with a target rating range for each. Front-load the "cheapest fixes" based on my data (e.g. if my blunder rate is high, that's a cheap fix compared to deep positional understanding).
 
-    ### 3. Suggested weekly structure
-    Provide a time-budget template for study allocation (e.g., "40% tactics pattern work, 25% endgame technique") based purely on my data.
+    ### 3. Weekly Training Plan
+    Provide a concrete plan derived from my ranked weakness list and my exact Weekly Time Budget.
+    Format exactly like this example (but adapt to my specific data):
+    `Week of [Date] — Focus: [X]`
+    `- Nx sessions, ~Y min each: [specific resource type/search term to use]`
+    `- Daily: [specific drill/habit]`
+    `- Goal this week: [Specific measurable outcome based on my data]`
 
-    ### 4. What to explicitly *not* prioritize right now
+    ### 4. Weekly Check-In Loop (Accountability)
+    Tell me exactly which specific metrics from this report I need to check next week to prove I actually improved.
+
+    ### 5. What to explicitly *not* prioritize right now
     Tell me what is NOT my bottleneck based on the data (e.g., "your opening theory is already solid, do not study openings").
-
-    ### 5. Re-check schedule
-    Recommend when to re-run this report to track metric shifts (e.g. after X games).
     """
     
     response = client.models.generate_content(
