@@ -6,6 +6,10 @@ import sys
 import ingest
 import engine
 import chat
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="AI Chess Coach API")
 
@@ -117,14 +121,20 @@ class GoalRequest(BaseModel):
     target_date: str = ""
     time_budget: str = ""
     constraints: str = ""
+    api_key: str = ""
 
 @app.post("/report/{username}")
 def generate_report(username: str, goal: GoalRequest, db: Session = Depends(get_db)):
+    if not goal.api_key:
+        return {"status": "error", "message": "Please provide your Gemini API key in the UI."}
+        
     features = utils.extract_features(db, username)
     if features["total_games"] == 0:
         return {"status": "error", "message": f"No games found for {username}. Please sync games first."}
         
     try:
+        # Override the env var temporarily so utils picks it up
+        os.environ["GEMINI_API_KEY"] = goal.api_key
         report_md = utils.generate_coach_report(features, username, goal)
         return {"status": "success", "report": report_md, "stats": features}
     except Exception as e:

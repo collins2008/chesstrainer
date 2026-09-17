@@ -11,6 +11,7 @@ export default function Home() {
   const [targetDate, setTargetDate] = useState("");
   const [timeBudget, setTimeBudget] = useState("");
   const [constraints, setConstraints] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [apiUrl, setApiUrl] = useState("http://127.0.0.1:8000");
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -75,7 +76,8 @@ export default function Home() {
           target_rating: targetRating,
           target_date: targetDate,
           time_budget: timeBudget,
-          constraints: constraints
+          constraints: constraints,
+          api_key: apiKey
         })
       });
       const data = await res.json();
@@ -104,15 +106,27 @@ export default function Home() {
         <section className="bg-gray-50 dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold">Player Profile</h2>
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span>Backend URL:</span>
-              <input 
-                type="text" 
-                value={apiUrl}
-                onChange={(e) => setApiUrl(e.target.value)}
-                className="border p-1 rounded bg-white dark:bg-black dark:text-white w-48 border-gray-300 dark:border-gray-700"
-                placeholder="http://localhost:8000"
-              />
+            <div className="flex flex-col items-end gap-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2">
+                <span>Backend URL:</span>
+                <input 
+                  type="text" 
+                  value={apiUrl}
+                  onChange={(e) => setApiUrl(e.target.value)}
+                  className="border p-1 rounded bg-white dark:bg-black dark:text-white w-48 border-gray-300 dark:border-gray-700"
+                  placeholder="http://localhost:8000"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Gemini API Key:</span>
+                <input 
+                  type="password" 
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="border p-1 rounded bg-white dark:bg-black dark:text-white w-48 border-gray-300 dark:border-gray-700"
+                  placeholder="AI key (required)"
+                />
+              </div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-4 items-center">
