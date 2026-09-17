@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -18,6 +18,7 @@ export default function Home() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [engineStatus, setEngineStatus] = useState<any>(null);
+  const reportRef = useRef<HTMLElement>(null);
 
   // Poll for engine status every 5 seconds
   useEffect(() => {
@@ -83,6 +84,9 @@ export default function Home() {
       const data = await res.json();
       if (data.status === "success") {
         setReport(data);
+        setTimeout(() => {
+          reportRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
       } else {
         setError(data.message || "Failed to generate report.");
       }
@@ -238,7 +242,7 @@ export default function Home() {
         </section>
 
         {report && (
-          <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <section ref={reportRef} className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-8 mb-16 border-t pt-8">
             <h3 className="text-xl font-semibold mb-4">Core Statistics</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-gray-50 dark:bg-zinc-900 p-4 rounded-xl border border-gray-200 dark:border-zinc-800 text-center">
@@ -264,12 +268,12 @@ export default function Home() {
                 <h3 className="text-xl font-semibold mb-4 mt-8">Behavioral & Engine Analysis</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-xl border border-blue-200 dark:border-blue-900 text-center">
-                    <p className="text-sm text-blue-600 dark:text-blue-400">Total Moves</p>
-                    <p className="text-2xl font-bold">{report.stats.engine_metrics.total_moves_analyzed}</p>
+                    <p className="text-sm text-blue-600 dark:text-blue-400">Avg WP Loss</p>
+                    <p className="text-2xl font-bold">{report.stats.engine_metrics.avg_wp_loss_per_move}</p>
                   </div>
                   <div className="bg-amber-50 dark:bg-amber-950 p-4 rounded-xl border border-amber-200 dark:border-amber-900 text-center">
                     <p className="text-sm text-amber-600 dark:text-amber-400">Overall CPL</p>
-                    <p className="text-2xl font-bold">{report.stats.engine_metrics.average_centipawn_loss}</p>
+                    <p className="text-2xl font-bold">{report.stats.engine_metrics.avg_baseline_cpl}</p>
                   </div>
                   <div className="bg-red-50 dark:bg-red-950 p-4 rounded-xl border border-red-200 dark:border-red-900 text-center">
                     <p className="text-sm text-red-600 dark:text-red-400">Total Blunders</p>
